@@ -4,3 +4,12 @@
 2026-07-20 13:30:34,296 | INFO | Successfully retrieved cryptocurrency prices.
 2026-07-20 13:30:34,298 | INFO | Extraction completed successfully.
 2026-07-20 13:30:34,299 | INFO | ========== ETL Extraction Finished ==========
+2026-07-20 14:07:08,154 | INFO | ========== ETL Extraction Started ==========
+2026-07-20 14:07:08,155 | INFO | Starting cryptocurrency extraction.
+2026-07-20 14:07:08,744 | INFO | Request sent to CoinGecko API.
+2026-07-20 14:07:08,744 | INFO | Successfully retrieved cryptocurrency prices.
+2026-07-20 14:07:08,748 | INFO | Extraction completed successfully.
+2026-07-20 14:07:08,749 | INFO | ========== ETL Extraction Finished ==========
+2026-07-20 14:13:51,697 | INFO | Starting cryptocurrency extraction.
+2026-07-20 14:13:52,614 | INFO | Request sent to CoinGecko API.
+2026-07-20 14:13:52,614 | INFO | Successfully retrieved cryptocurrency prices.
