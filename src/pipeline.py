@@ -4,6 +4,7 @@ Main ETL Pipeline
 Coordinates the Extract, Transform,
 and (later) Load stages.
 """
+from load import load_crypto_data
 
 from extract import get_crypto_prices
 from transform import transform_crypto_data
@@ -28,7 +29,9 @@ def run_pipeline():
     # Transform
     clean_data = transform_crypto_data(raw_data)
 
-    print("Transformation successful.\n")
+    load_crypto_data(clean_data)
+
+    print("Load successful.")
 
     print("Clean Records:\n")
 
