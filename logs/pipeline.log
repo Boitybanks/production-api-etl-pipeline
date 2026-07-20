@@ -1,0 +1,6 @@
+2026-07-20 13:30:33,300 | INFO | ========== ETL Extraction Started ==========
+2026-07-20 13:30:33,301 | INFO | Starting cryptocurrency extraction.
+2026-07-20 13:30:34,295 | INFO | Request sent to CoinGecko API.
+2026-07-20 13:30:34,296 | INFO | Successfully retrieved cryptocurrency prices.
+2026-07-20 13:30:34,298 | INFO | Extraction completed successfully.
+2026-07-20 13:30:34,299 | INFO | ========== ETL Extraction Finished ==========
