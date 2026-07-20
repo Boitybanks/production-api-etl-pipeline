@@ -17,3 +17,7 @@ logs/
 
 # macOS
 .DS_Store
+
+# Logs
+logs/
+*.log
