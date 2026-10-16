@@ -1,3 +1,40 @@
+## WeThinkCode_ Data Engineering Elective — 2026
+
+**Elective verification code:** `WTC-S9FESG9M`
+
+This repository is submitted as evidence of my practical Data Engineering work for the WeThinkCode_ 2026 elective selection process.
+
+### Project overview
+
+The Production API ETL Pipeline demonstrates an end-to-end data engineering workflow using Python, the CoinGecko API, PostgreSQL, and SQL.
+
+The pipeline extracts cryptocurrency market prices, transforms API responses into structured records, validates the data, and loads it into PostgreSQL for historical analysis.
+
+### Engineering practices
+
+- Modular extraction, transformation, and loading
+- Data validation before database insertion
+- Environment-based database configuration
+- Parameterized SQL queries and batch inserts
+- Database transaction management and rollback
+- Logging and error handling
+- Git version control and incremental improvements
+
+### Elective learning evidence
+
+**IBM courses completed:**
+
+1. Data Engineering Basics for Everyone
+2. Relational Database Management Systems
+
+**LinkedIn learning posts:**
+
+- [Data Engineering Basics for Everyone](https://www.linkedin.com/feed/update/urn:li:activity:7506018227291021312/)
+- [Relational Database Management Systems](https://www.linkedin.com/feed/update/urn:li:activity:7513221411101134848/)
+
+**Development focus:** Continue improving reliability, automated testing, documentation, and SQL analytics through regular, meaningful commits.
+
+
 # 🚀 Production API ETL Pipeline
 
 A production-style ETL (Extract, Transform, Load) pipeline built with **Python** and **PostgreSQL** that retrieves live cryptocurrency market data from the CoinGecko API, transforms it into a structured format, and stores historical snapshots in a relational database for SQL analysis.
