@@ -4,6 +4,19 @@
 
 This repository is submitted as evidence of my practical Data Engineering work for the WeThinkCode_ 2026 elective selection process.
 
+
+## Reliability improvements — 26 October 2026
+
+The transformation stage now validates CoinGecko payload structure, coin identifiers, and USD prices before any database writes. It rejects missing, negative, non-finite, boolean, and malformed values with actionable errors. Prices are represented with `Decimal` to avoid binary floating-point rounding in downstream database inserts.
+
+Offline regression tests (no API key or PostgreSQL instance required):
+
+```bash
+python -m unittest discover -s tests -p "test_transform.py" -v
+```
+
+These tests cover valid values, zero prices, empty responses, missing USD fields, invalid prices, and empty coin identifiers. The tests were added through GitHub; **a successful CI or local test run has not yet been verified**. A live end-to-end run still requires a reachable CoinGecko API and configured PostgreSQL environment.
+
 ### Project overview
 
 The Production API ETL Pipeline demonstrates an end-to-end data engineering workflow using Python, the CoinGecko API, PostgreSQL, and SQL.
