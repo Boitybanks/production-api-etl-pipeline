@@ -17,6 +17,21 @@ python -m unittest discover -s tests -p "test_transform.py" -v
 
 These tests cover valid values, zero prices, empty responses, missing USD fields, invalid prices, and empty coin identifiers. The tests were added through GitHub; **a successful CI or local test run has not yet been verified**. A live end-to-end run still requires a reachable CoinGecko API and configured PostgreSQL environment.
 
+
+## Crypto Insights Explorer dashboard (26 October 2026)
+
+An optional, read-only [Streamlit dashboard](dashboard.py) explores historical cryptocurrency snapshots already stored in PostgreSQL. It includes per-coin selection, 24-hour / 7-day / 30-day / all-time filters, price trend lines, a 7-observation moving average, latest price, range, snapshot-to-snapshot changes, volatility, and a latest-prices comparison table. The charts use **stored historical observations**, not invented live prices.
+
+```bash
+pip install -r requirements-dashboard.txt
+# Set DB_PASSWORD, DB_HOST, DB_NAME, DB_USER and DB_PORT as for the ETL.
+streamlit run dashboard.py
+```
+
+Alternatively, set `DATABASE_URL` to a PostgreSQL connection URL. Never commit database credentials. The dashboard caches database reads for 3600 seconds and provides a manual **Refresh data now** button. **This does not schedule the ETL job:** run `python src/pipeline.py` hourly on a machine with database access (e.g. a cron job or Task Scheduler). For example, a Linux crontab entry of `0 * * * * cd /absolute/path/to/repo && /absolute/path/to/venv/bin/python src/pipeline.py` requires the scheduler's environment to provide database credentials and an existing `logs/` directory. Use a hosted scheduler only after configuring persistent database access and secrets.
+
+**Status:** Dashboard code and dependencies are committed, but deployment, database connectivity, hourly ingestion, and live UI verification have not yet been completed. Calculated percentage changes compare consecutive stored observations and should not be called 1-hour returns when collection gaps exist. The dashboard is for educational exploration, not trading advice.
+
 ### Project overview
 
 The Production API ETL Pipeline demonstrates an end-to-end data engineering workflow using Python, the CoinGecko API, PostgreSQL, and SQL.
