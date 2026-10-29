@@ -32,6 +32,18 @@ Alternatively, set `DATABASE_URL` to a PostgreSQL connection URL. Never commit d
 
 **Status:** Dashboard code and dependencies are committed, but deployment, database connectivity, hourly ingestion, and live UI verification have not yet been completed. Calculated percentage changes compare consecutive stored observations and should not be called 1-hour returns when collection gaps exist. The dashboard is for educational exploration, not trading advice.
 
+
+### Automated collection and validation (29 October 2026)
+
+GitHub Actions workflows have been added:
+
+- [Hourly cryptocurrency ETL](.github/workflows/hourly-etl.yml) — scheduled at minute 7 of every UTC hour, plus manual dispatch. Runs the existing pipeline against an **externally reachable persistent PostgreSQL database**. Configure repository Actions secrets `DB_HOST`, `DB_PASSWORD`, and, when different from defaults, `DB_PORT`, `DB_NAME`, `DB_USER`. Do not use `localhost` for a database hosted on your own laptop; GitHub runners cannot access it. A managed database may require TLS or allowlisting configuration. GitHub's scheduled workflows may be delayed and are not a guaranteed exact hourly service.
+- [Python ETL checks](.github/workflows/python-tests.yml) — syntax compilation and offline transformation regression tests on pushes and pull requests.
+
+Extraction failures now cause the scheduled pipeline process to exit unsuccessfully rather than report a false green run. **Workflow files committed does not mean the secrets, database, hourly ingestion, or dashboard deployment are configured or verified.**
+
+For a public dashboard, deploy `dashboard.py` on a Python/Streamlit-compatible hosting service, point it at the same persistent PostgreSQL database, and configure credentials in that host's private secrets (not in the repo). Streamlit Community Cloud is one possible option; account-side authorization and database connectivity still need configuration.
+
 ### Project overview
 
 The Production API ETL Pipeline demonstrates an end-to-end data engineering workflow using Python, the CoinGecko API, PostgreSQL, and SQL.
