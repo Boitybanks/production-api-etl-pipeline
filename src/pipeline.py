@@ -21,17 +21,16 @@ def run_pipeline():
     raw_data = get_crypto_prices()
 
     if raw_data is None:
-        print("Extraction failed.")
-        return
+        raise RuntimeError("Extraction failed; no market snapshot was stored.")
 
     print("Extraction successful.\n")
 
     # Transform
     clean_data = transform_crypto_data(raw_data)
 
-    load_crypto_data(clean_data)
+    inserted = load_crypto_data(clean_data)
 
-    print("Load successful.")
+    print(f"Load successful: {inserted} records inserted.")
 
     print("Clean Records:\n")
 
