@@ -1,8 +1,6 @@
-name: Hourly cryptocurrency ETL
+name: On-demand cryptocurrency ETL
 
 on:
-  schedule:
-    - cron: '7 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -35,5 +33,5 @@ jobs:
           test -n "$DB_PASSWORD" || { echo "Configure DB_PASSWORD secret"; exit 1; }
       - name: Prepare log directory
         run: mkdir -p logs
-      - name: Ingest hourly snapshot
+      - name: Ingest requested snapshot
         run: python src/pipeline.py
