@@ -1,6 +1,8 @@
-name: On-demand cryptocurrency ETL
+name: Hourly cryptocurrency ETL
 
 on:
+  schedule:
+    - cron: '7 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -12,14 +14,19 @@ concurrency:
 
 jobs:
   ingest:
+    # Scheduled runs stay skipped until the ETL_SCHEDULE_ENABLED repository
+    # variable is 'true', so an unconfigured database cannot fail every hour.
+    if: github.event_name != 'schedule' || vars.ETL_SCHEDULE_ENABLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
       DB_HOST: ${{ secrets.DB_HOST }}
       DB_PORT: ${{ secrets.DB_PORT }}
       DB_NAME: ${{ secrets.DB_NAME }}
       DB_USER: ${{ secrets.DB_USER }}
       DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -29,9 +36,11 @@ jobs:
       - run: pip install -r requirements.txt
       - name: Check database configuration
         run: |
-          test -n "$DB_HOST" || { echo "Configure DB_HOST secret"; exit 1; }
-          test -n "$DB_PASSWORD" || { echo "Configure DB_PASSWORD secret"; exit 1; }
-      - name: Prepare log directory
-        run: mkdir -p logs
-      - name: Ingest requested snapshot
+          if [ -z "$DATABASE_URL" ] && { [ -z "$DB_HOST" ] || [ -z "$DB_PASSWORD" ]; }; then
+            echo "::error::Configure the DATABASE_URL secret, or both DB_HOST and DB_PASSWORD secrets."
+            exit 1
+          fi
+      - name: Apply database schema
+        run: python src/init_db.py
+      - name: Ingest hourly snapshot
         run: python src/pipeline.py

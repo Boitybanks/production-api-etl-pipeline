@@ -12,10 +12,10 @@ The transformation stage now validates CoinGecko payload structure, coin identif
 Offline regression tests (no API key or PostgreSQL instance required):
 
 ```bash
-python -m unittest discover -s tests -p "test_transform.py" -v
+python -m unittest discover -s tests -p "test_*.py" -v
 ```
 
-These tests cover valid values, zero prices, empty responses, missing USD fields, invalid prices, and empty coin identifiers. The tests were added through GitHub; **a successful CI or local test run has not yet been verified**. A live end-to-end run still requires a reachable CoinGecko API and configured PostgreSQL environment.
+These tests cover valid values, zero prices, empty responses, missing USD fields, invalid prices, empty coin identifiers, database configuration, and CoinGecko extraction errors. A live end-to-end run still requires a reachable CoinGecko API and configured PostgreSQL environment.
 
 
 ## Crypto Insights Explorer dashboard (26 October 2026)
@@ -28,7 +28,7 @@ pip install -r requirements-dashboard.txt
 streamlit run dashboard.py
 ```
 
-Alternatively, set `DATABASE_URL` to a PostgreSQL connection URL. Never commit database credentials. The dashboard caches database reads for 3600 seconds and provides a manual **Refresh data now** button. **This does not schedule the ETL job:** run `python src/pipeline.py` hourly on a machine with database access (e.g. a cron job or Task Scheduler). For example, a Linux crontab entry of `0 * * * * cd /absolute/path/to/repo && /absolute/path/to/venv/bin/python src/pipeline.py` requires the scheduler's environment to provide database credentials and an existing `logs/` directory. Use a hosted scheduler only after configuring persistent database access and secrets.
+Alternatively, set `DATABASE_URL` to a PostgreSQL connection URL. Never commit database credentials. The dashboard caches database reads for 3600 seconds and provides a manual **Refresh data now** button. **This does not schedule the ETL job:** run `python src/pipeline.py` hourly on a machine with database access (e.g. a cron job or Task Scheduler). For example, a Linux crontab entry of `0 * * * * cd /absolute/path/to/repo && /absolute/path/to/venv/bin/python src/pipeline.py` requires the scheduler's environment or a `.env` file to provide database credentials. Use a hosted scheduler only after configuring persistent database access and secrets.
 
 **Status:** Dashboard code and dependencies are committed, but deployment, database connectivity, hourly ingestion, and live UI verification have not yet been completed. Calculated percentage changes compare consecutive stored observations and should not be called 1-hour returns when collection gaps exist. The dashboard is for educational exploration, not trading advice.
 
@@ -37,8 +37,28 @@ Alternatively, set `DATABASE_URL` to a PostgreSQL connection URL. Never commit d
 
 GitHub Actions workflows have been added:
 
-- [Hourly cryptocurrency ETL](.github/workflows/hourly-etl.yml) — scheduled at minute 7 of every UTC hour, plus manual dispatch. Runs the existing pipeline against an **externally reachable persistent PostgreSQL database**. Configure repository Actions secrets `DB_HOST`, `DB_PASSWORD`, and, when different from defaults, `DB_PORT`, `DB_NAME`, `DB_USER`. Do not use `localhost` for a database hosted on your own laptop; GitHub runners cannot access it. A managed database may require TLS or allowlisting configuration. GitHub's scheduled workflows may be delayed and are not a guaranteed exact hourly service.
-- [Python ETL checks](.github/workflows/python-tests.yml) — syntax compilation and offline transformation regression tests on pushes and pull requests.
+- [Hourly cryptocurrency ETL](.github/workflows/hourly-etl.yml) — manual dispatch, plus a schedule at minute 7 of every UTC hour that stays skipped until the `ETL_SCHEDULE_ENABLED` repository variable is `true`. Creates the table if needed, then runs the pipeline against an **externally reachable persistent PostgreSQL database**. Do not use `localhost` for a database hosted on your own laptop; GitHub runners cannot access it. GitHub's scheduled workflows may be delayed and are not a guaranteed exact hourly service.
+- [Python ETL checks](.github/workflows/python-tests.yml) — syntax compilation and offline regression tests on pushes and pull requests.
+
+To turn on hourly collection:
+
+1. Store the hosted PostgreSQL URL, pasting it when prompted, and start a manual run.
+
+   ```bash
+   gh secret set DATABASE_URL
+   gh workflow run hourly-etl.yml
+   ```
+
+2. Run `gh run watch` and confirm the run succeeds.
+3. Enable the schedule only after that run succeeds.
+
+   ```bash
+   gh variable set ETL_SCHEDULE_ENABLED --body true
+   ```
+
+Instead of `DATABASE_URL`, you can set the `DB_HOST` and `DB_PASSWORD` secrets, and `DB_PORT`, `DB_NAME`, `DB_USER` when they differ from the defaults. Percent-encode special characters such as `/`, `@`, and `%` in a URL password. A managed database may require `?sslmode=require` on the URL or IP allowlisting. An optional `COINGECKO_API_KEY` secret reduces CoinGecko rate limiting.
+
+GitHub disables scheduled workflows in a public repository after 60 days without repository activity. Re-enable collection with `gh workflow enable hourly-etl.yml`.
 
 Extraction failures now cause the scheduled pipeline process to exit unsuccessfully rather than report a false green run. **Workflow files committed does not mean the secrets, database, hourly ingestion, or dashboard deployment are configured or verified.**
 
@@ -133,7 +153,7 @@ production-api-etl-pipeline/
 
 │
 ├── assets/
-│   ├── pipeline-run.png
+│   ├── pipeline_run.png
 │   ├── pgadmin-table.png
 │   ├── project-structure.png
 │   ├── sql-query.png
@@ -147,15 +167,20 @@ production-api-etl-pipeline/
 ├── logs/
 │   └── pipeline.log
 │
+├── sql/
+│   └── schema.sql
+│
 ├── src/
-│   ├── __init__.py
+│   ├── db.py
 │   ├── extract.py
+│   ├── init_db.py
 │   ├── transform.py
 │   ├── load.py
 │   └── pipeline.py
 │
 ├── tests/
 │
+├── .env.example
 ├── requirements.txt
 ├── LICENSE
 ├── README.md
@@ -221,20 +246,24 @@ cursor.execute(
 
 # 🗄 PostgreSQL Database Schema
 
+Defined in [sql/schema.sql](sql/schema.sql). Create the table with `python src/init_db.py`; this is safe to run repeatedly and leaves an existing table unchanged.
+
 ```sql
-CREATE TABLE crypto_prices (
-
+CREATE TABLE IF NOT EXISTS crypto_prices (
     id SERIAL PRIMARY KEY,
-
-    coin VARCHAR(50),
-
-    currency VARCHAR(10),
-
-    price NUMERIC,
-
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-
+    coin VARCHAR(50) NOT NULL,
+    currency VARCHAR(10) NOT NULL,
+    price NUMERIC NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+```
+
+A table created from the earlier schema has a `TIMESTAMP` column, and the dashboard reads those values as UTC. If the database is not set to UTC, run this once, using the database's time zone:
+
+```sql
+ALTER TABLE crypto_prices
+    ALTER COLUMN created_at TYPE TIMESTAMPTZ
+    USING created_at AT TIME ZONE 'Africa/Johannesburg';
 ```
 
 ---
@@ -245,7 +274,7 @@ CREATE TABLE crypto_prices (
 
 The complete ETL pipeline running successfully.
 
-![Pipeline Run](assets/pipeline-run.png)
+![Pipeline Run](assets/pipeline_run.png)
 
 ---
 
@@ -352,6 +381,12 @@ Install dependencies.
 
 ```bash
 pip install -r requirements.txt
+```
+
+Copy `.env.example` to `.env`, fill in your database password, and create the table.
+
+```bash
+python src/init_db.py
 ```
 
 ---
@@ -482,7 +517,6 @@ While building this project I gained practical experience with:
 Planned enhancements include:
 
 - Docker support
-- Environment variables using `.env`
 - Configuration management layer
 - YAML configuration files
 - Scheduling with Cron / Windows Task Scheduler
