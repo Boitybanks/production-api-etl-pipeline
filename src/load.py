@@ -2,11 +2,12 @@
 """PostgreSQL loading layer for the cryptocurrency ETL pipeline."""
 
 import logging
-import os
 from decimal import Decimal, InvalidOperation
 
 import psycopg2
 from psycopg2.extras import execute_batch
+
+from db import connect, get_db_config
 
 logger = logging.getLogger(__name__)
 
@@ -28,16 +29,11 @@ def load_crypto_data(records):
 
     Raises:
         ValueError: If a record contains invalid data.
-        RuntimeError: If database credentials are missing.
+        RuntimeError: If credentials are missing or DATABASE_URL cannot connect.
         psycopg2.Error: If a database operation fails.
     """
-    password = os.getenv("DB_PASSWORD")
-
-    if not password:
-        raise RuntimeError(
-            "DB_PASSWORD is not configured. "
-            "Set it before running the ETL pipeline."
-        )
+    # Fail on missing credentials before doing any other work.
+    get_db_config()
 
     # Validate everything before opening a database connection.
     validated_records = []
@@ -65,20 +61,10 @@ def load_crypto_data(records):
         logger.info("No records to load.")
         return 0
 
-    # Keep credentials out of code and version control.
-    db_config = {
-        "host": os.getenv("DB_HOST", "localhost"),
-        "dbname": os.getenv("DB_NAME", "crypto_etl"),
-        "user": os.getenv("DB_USER", "postgres"),
-        "password": password,
-        "port": os.getenv("DB_PORT", "5432"),
-        "connect_timeout": 10,
-    }
-
     connection = None
 
     try:
-        connection = psycopg2.connect(**db_config)
+        connection = connect()
 
         # Connection context commits on success and rolls back
         # automatically when an exception is raised.
@@ -98,7 +84,7 @@ def load_crypto_data(records):
 
         return len(validated_records)
 
-    except psycopg2.Error:
+    except (psycopg2.Error, RuntimeError):
         logger.exception("PostgreSQL load operation failed.")
         raise
 

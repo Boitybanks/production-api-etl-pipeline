@@ -6,7 +6,7 @@ and (later) Load stages.
 """
 from load import load_crypto_data
 
-from extract import get_crypto_prices
+from extract import configure_logging, get_crypto_prices
 from transform import transform_crypto_data
 
 
@@ -39,4 +39,5 @@ def run_pipeline():
 
 
 if __name__ == "__main__":
+    configure_logging()
     run_pipeline()
