@@ -9,10 +9,11 @@ from datetime import datetime, timezone
 import pandas as pd
 import plotly.express as px
 import streamlit as st
-from dotenv import load_dotenv
+from dotenv import find_dotenv, load_dotenv
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import URL
 
+load_dotenv(find_dotenv(".env.local"))
 load_dotenv()
 
 st.set_page_config(page_title="Crypto Insights Explorer", page_icon="📈", layout="wide")

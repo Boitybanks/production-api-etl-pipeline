@@ -3,17 +3,23 @@
 import os
 
 import psycopg2
-from dotenv import load_dotenv
+from dotenv import find_dotenv, load_dotenv
 
+# `neon deploy` writes .env.local. Values already set are not overridden.
+load_dotenv(find_dotenv(".env.local"))
 load_dotenv()
 
 CONNECT_TIMEOUT_SECONDS = 10
 
 
-def get_db_config():
+def get_db_config(direct=False):
     """Build psycopg2 connection arguments from the environment.
 
     DATABASE_URL takes priority over the individual DB_* variables.
+
+    Args:
+        direct: Prefer DATABASE_URL_UNPOOLED, which Neon recommends for
+            schema changes, when it is set.
 
     Returns:
         dict: Keyword arguments for psycopg2.connect.
@@ -22,6 +28,9 @@ def get_db_config():
         RuntimeError: If database credentials are missing.
     """
     database_url = os.getenv("DATABASE_URL")
+
+    if direct:
+        database_url = os.getenv("DATABASE_URL_UNPOOLED") or database_url
 
     if database_url:
         return {
@@ -49,14 +58,17 @@ def get_db_config():
     }
 
 
-def connect():
+def connect(direct=False):
     """Open a PostgreSQL connection using the environment configuration.
+
+    Args:
+        direct: Prefer the unpooled connection, for schema changes.
 
     Raises:
         RuntimeError: If credentials are missing or DATABASE_URL cannot connect.
         psycopg2.Error: If a connection built from DB_* variables fails.
     """
-    config = get_db_config()
+    config = get_db_config(direct)
 
     if "dsn" not in config:
         return psycopg2.connect(**config)

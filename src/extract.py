@@ -10,10 +10,11 @@ import os
 from pathlib import Path
 
 import requests
-from dotenv import load_dotenv
+from dotenv import find_dotenv, load_dotenv
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
+load_dotenv(find_dotenv(".env.local"))
 load_dotenv()
 
 # -----------------------------

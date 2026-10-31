@@ -56,7 +56,7 @@ To turn on hourly collection:
    gh variable set ETL_SCHEDULE_ENABLED --body true
    ```
 
-Instead of `DATABASE_URL`, you can set the `DB_HOST` and `DB_PASSWORD` secrets, and `DB_PORT`, `DB_NAME`, `DB_USER` when they differ from the defaults. Percent-encode special characters such as `/`, `@`, and `%` in a URL password. A managed database may require `?sslmode=require` on the URL or IP allowlisting. An optional `COINGECKO_API_KEY` secret reduces CoinGecko rate limiting.
+Instead of `DATABASE_URL`, you can set the `DB_HOST` and `DB_PASSWORD` secrets, and `DB_PORT`, `DB_NAME`, `DB_USER` when they differ from the defaults. Percent-encode special characters such as `/`, `@`, and `%` in a URL password. With Neon, `DATABASE_URL` is the pooled URL, and an optional `DATABASE_URL_UNPOOLED` secret lets the schema step use the direct connection. A managed database may require `?sslmode=require` on the URL or IP allowlisting. An optional `COINGECKO_API_KEY` secret reduces CoinGecko rate limiting.
 
 GitHub disables scheduled workflows in a public repository after 60 days without repository activity. Re-enable collection with `gh workflow enable hourly-etl.yml`.
 

@@ -11,6 +11,7 @@ logs/
 
 # Environment Variables
 .env
+.env.local
 
 # VS Code
 .vscode/
@@ -21,3 +22,5 @@ logs/
 # Logs
 logs/
 *.log
+.neon
+node_modules/

@@ -45,6 +45,20 @@ class DbConfigTests(unittest.TestCase):
         self.assertEqual(config["dsn"], "postgresql://u:p@h/d")
         self.assertNotIn("password", config)
 
+    def test_direct_prefers_unpooled_url(self):
+        env = {
+            "DATABASE_URL": "postgresql://u:p@pooled/d",
+            "DATABASE_URL_UNPOOLED": "postgresql://u:p@direct/d",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            self.assertEqual(get_db_config()["dsn"], env["DATABASE_URL"])
+            self.assertEqual(get_db_config(direct=True)["dsn"], env["DATABASE_URL_UNPOOLED"])
+
+    def test_direct_falls_back_to_database_url(self):
+        env = {"DATABASE_URL": "postgresql://u:p@pooled/d", "DATABASE_URL_UNPOOLED": ""}
+        with patch.dict(os.environ, env, clear=True):
+            self.assertEqual(get_db_config(direct=True)["dsn"], env["DATABASE_URL"])
+
     def test_malformed_database_url_does_not_expose_password(self):
         urls = (
             "postgresq://u:FAKESECRET@db.invalid/x",

@@ -14,7 +14,7 @@ def init_db():
     """Apply the idempotent schema in one transaction."""
     schema = SCHEMA_PATH.read_text(encoding="utf-8")
 
-    connection = connect()
+    connection = connect(direct=True)
 
     try:
         with connection:
