@@ -9,8 +9,11 @@ from datetime import datetime, timezone
 import pandas as pd
 import plotly.express as px
 import streamlit as st
+from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import URL
+
+load_dotenv()
 
 st.set_page_config(page_title="Crypto Insights Explorer", page_icon="📈", layout="wide")
 st.title("Crypto Insights Explorer")
@@ -19,16 +22,22 @@ st.caption("Historical hourly snapshots from your own ETL pipeline · Educationa
 
 def database_url():
     if os.getenv("DATABASE_URL"):
-        return os.environ["DATABASE_URL"]
+        # Name the installed driver: SQLAlchemy rejects postgres:// and may
+        # default postgresql:// to a driver this project does not install.
+        url = os.environ["DATABASE_URL"]
+        for prefix in ("postgres://", "postgresql://"):
+            if url.startswith(prefix):
+                return "postgresql+psycopg2://" + url[len(prefix):]
+        return url
     if not os.getenv("DB_PASSWORD"):
         raise ValueError("Set DATABASE_URL or DB_PASSWORD and the DB_* connection variables.")
     return URL.create(
         "postgresql+psycopg2",
-        username=os.getenv("DB_USER", "postgres"),
+        username=os.getenv("DB_USER") or "postgres",
         password=os.environ["DB_PASSWORD"],
-        host=os.getenv("DB_HOST", "localhost"),
-        port=int(os.getenv("DB_PORT", "5432")),
-        database=os.getenv("DB_NAME", "crypto_etl"),
+        host=os.getenv("DB_HOST") or "localhost",
+        port=int(os.getenv("DB_PORT") or "5432"),
+        database=os.getenv("DB_NAME") or "crypto_etl",
     )
 
 
@@ -53,8 +62,10 @@ if st.sidebar.button("Refresh data now"):
 try:
     df = fetch_prices()
 except Exception as error:
-    st.error("Could not load historical prices. Check database access and run the ETL first.")
-    st.code(str(error))
+    # Show only the error type: driver messages can repeat parts of the URL,
+    # including the password, and this page may be public.
+    st.error("Could not load historical prices. Check DATABASE_URL or the DB_* variables, and run the ETL first.")
+    st.code(type(error).__name__)
     st.stop()
 
 if df.empty:
