@@ -18,6 +18,37 @@ python -m unittest discover -s tests -p "test_*.py" -v
 These tests cover valid values, zero prices, empty responses, missing USD fields, invalid prices, empty coin identifiers, database configuration, and CoinGecko extraction errors. A live end-to-end run still requires a reachable CoinGecko API and configured PostgreSQL environment.
 
 
+## Database reliability checks — 6 November 2026
+
+The loader now rejects non-string coin/currency identifiers instead of silently
+converting values such as `None` into text. Load failure logs report the exception
+type without repeating PostgreSQL row diagnostics.
+
+PostgreSQL integration tests verify committed Decimal precision, zero prices,
+parameterized SQL, connection cleanup, and rollback of an entire 101-row batch
+when the second page fails. Retrying that confirmed failed transaction stores each
+record once and preserves previously committed data.
+
+**Retry boundary:** this is an append-only snapshot loader. Repeating a successful
+load creates another snapshot. A lost connection during commit has an uncertain
+outcome; do not automatically retry it assuming exactly-once delivery. Durable
+snapshot identifiers would be required for that stronger guarantee.
+
+Run integration tests against an explicitly selected disposable database:
+
+```bash
+# Bash; use only a local/disposable database, never your Neon production URL.
+export TEST_DATABASE_URL='postgresql://etl_test:disposable-test-password@localhost:5432/etl_test'
+python -m unittest discover -s tests -p 'test_*.py' -v
+```
+
+`-s tests` selects the test directory, `-p` selects matching test filenames, and
+`-v` reports individual results. Each integration test creates and removes its
+own uniquely named schema. Without `TEST_DATABASE_URL`, the four integration
+tests are explicitly skipped; the offline tests still run. CI provisions a
+disposable PostgreSQL 18 service and runs both groups, without Neon secrets or
+CoinGecko calls. The account needs permission to create schemas in the test DB.
+
 ## Crypto Insights Explorer dashboard (26 October 2026)
 
 An optional, read-only [Streamlit dashboard](dashboard.py) explores historical cryptocurrency snapshots already stored in PostgreSQL. It includes per-coin selection, 24-hour / 7-day / 30-day / all-time filters, price trend lines, a 7-observation moving average, latest price, range, snapshot-to-snapshot changes, volatility, and a latest-prices comparison table. The charts use **stored historical observations**, not invented live prices.
@@ -40,25 +71,20 @@ GitHub Actions workflows have been added:
 - [Hourly cryptocurrency ETL](.github/workflows/hourly-etl.yml) — manual dispatch, plus a schedule at minute 7 of every UTC hour that stays skipped until the `ETL_SCHEDULE_ENABLED` repository variable is `true`. Creates the table if needed, then runs the pipeline against an **externally reachable persistent PostgreSQL database**. Do not use `localhost` for a database hosted on your own laptop; GitHub runners cannot access it. GitHub's scheduled workflows may be delayed and are not a guaranteed exact hourly service.
 - [Python ETL checks](.github/workflows/python-tests.yml) — syntax compilation and offline regression tests on pushes and pull requests.
 
-To turn on hourly collection:
+Collection is kept manual for this project. To configure a manual run, store the
+hosted PostgreSQL URL privately and dispatch the workflow:
 
-1. Store the hosted PostgreSQL URL, pasting it when prompted, and start a manual run.
+```bash
+gh secret set DATABASE_URL
+gh workflow run hourly-etl.yml
+```
 
-   ```bash
-   gh secret set DATABASE_URL
-   gh workflow run hourly-etl.yml
-   ```
-
-2. Run `gh run watch` and confirm the run succeeds.
-3. Enable the schedule only after that run succeeds.
-
-   ```bash
-   gh variable set ETL_SCHEDULE_ENABLED --body true
-   ```
+`gh secret set` prompts for the URL so it does not appear in shell history.
+`gh workflow run` starts one collection run. The existing scheduled trigger is
+gated by `ETL_SCHEDULE_ENABLED`; keep that variable unset or `false` for manual
+collection. A dashboard refresh only reads stored data.
 
 Instead of `DATABASE_URL`, you can set the `DB_HOST` and `DB_PASSWORD` secrets, and `DB_PORT`, `DB_NAME`, `DB_USER` when they differ from the defaults. Percent-encode special characters such as `/`, `@`, and `%` in a URL password. With Neon, `DATABASE_URL` is the pooled URL, and an optional `DATABASE_URL_UNPOOLED` secret lets the schema step use the direct connection. A managed database may require `?sslmode=require` on the URL or IP allowlisting. An optional `COINGECKO_API_KEY` secret reduces CoinGecko rate limiting.
-
-GitHub disables scheduled workflows in a public repository after 60 days without repository activity. Re-enable collection with `gh workflow enable hourly-etl.yml`.
 
 Extraction failures now cause the scheduled pipeline process to exit unsuccessfully rather than report a false green run. **Workflow files committed does not mean the secrets, database, hourly ingestion, or dashboard deployment are configured or verified.**
 
@@ -521,16 +547,10 @@ Planned enhancements include:
 - YAML configuration files
 - Scheduling with Cron / Windows Task Scheduler
 - Apache Airflow orchestration
-- Unit and integration testing
-- Data validation
 - Logging improvements
-- CI/CD with GitHub Actions
 - AWS EC2 deployment
 - AWS RDS PostgreSQL
 - AWS S3 Data Lake
-- Dashboard using Streamlit
-- Historical price analytics
-- Data visualization
 
 ---
 

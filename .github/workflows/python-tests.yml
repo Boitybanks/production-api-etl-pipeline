@@ -12,6 +12,21 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: etl_test
+          POSTGRES_PASSWORD: disposable-test-password
+          POSTGRES_DB: etl_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U etl_test -d etl_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -20,5 +35,7 @@ jobs:
       - run: pip install -r requirements.txt
       - name: Check Python syntax
         run: python -m compileall -q src dashboard.py tests
-      - name: Run offline regression tests
+      - name: Run regression and PostgreSQL integration tests
+        env:
+          TEST_DATABASE_URL: postgresql://etl_test:disposable-test-password@localhost:5432/etl_test
         run: python -m unittest discover -s tests -p 'test_*.py' -v

@@ -29,8 +29,7 @@ def load_crypto_data(records):
 
     Raises:
         ValueError: If a record contains invalid data.
-        RuntimeError: If credentials are missing or DATABASE_URL cannot connect.
-        psycopg2.Error: If a database operation fails.
+        RuntimeError: If configuration, connection, or a database operation fails.
     """
     # Fail on missing credentials before doing any other work.
     get_db_config()
@@ -40,8 +39,11 @@ def load_crypto_data(records):
 
     for index, record in enumerate(records):
         try:
-            coin = str(record["coin"]).strip()
-            currency = str(record["currency"]).strip().upper()
+            # Do not turn missing identifiers into plausible text such as "None".
+            if not isinstance(record["coin"], str) or not isinstance(record["currency"], str):
+                raise ValueError("Coin and currency must be strings")
+            coin = record["coin"].strip()
+            currency = record["currency"].strip().upper()
             price = Decimal(str(record["price"]))
 
             if not coin or not currency:
@@ -84,9 +86,12 @@ def load_crypto_data(records):
 
         return len(validated_records)
 
-    except (psycopg2.Error, RuntimeError):
-        logger.exception("PostgreSQL load operation failed.")
-        raise
+    except (psycopg2.Error, RuntimeError) as error:
+        # PostgreSQL diagnostics can include row values; keep public logs generic.
+        logger.error("PostgreSQL load operation failed (%s).", type(error).__name__)
+        raise RuntimeError(
+            f"PostgreSQL load operation failed ({type(error).__name__})."
+        ) from None
 
     finally:
         if connection is not None:
